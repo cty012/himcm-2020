@@ -24,6 +24,7 @@ class Available:
             }
         ]
         :param location:
+        [city name, USA]
         """
         self.time = time
         self.location = location
@@ -47,8 +48,16 @@ class Available:
             return 1
         if internship.time_flex():
             return 0
+
         # both flexible time
-        return self.time[0]
+        score = 0
+        for schedule in internship.time:
+            total_time = total_time_in_week(schedule)
+            if total_time == 0:
+                continue
+            score = max(score, intersect_week(self.time, schedule) / total_time)
+        assert 0 <= score <= 1
+        return score
 
     def match(self, internship):
         return self.match_time(internship) * self.match_location(internship)
@@ -61,10 +70,25 @@ def get_day(week, day_name):
     return day
 
 
+def total_time_in_week(week):
+    total = 0
+    for day_name in week:
+        total += total_time_in_day(week[day_name])
+    return total
+
+
+def total_time_in_day(day):
+    total = 0
+    for period in day:
+        total += (period["end"].minutes - period["start"].minutes)
+    return total
+
+
 def intersect_week(week1, week2):
     total = 0
     for day_name in ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']:
         total += intersect_day(get_day(week1, day_name), get_day(week2, day_name))
+    return total
 
 
 def intersect_day(day1, day2):
@@ -85,6 +109,7 @@ def intersect_day(day1, day2):
 
 
 def intersect(period1, period2):
-    hours = max(min(period1[1], period2[1]) - max(period1[0], period2[0]), 0)
-    remain = None if period1[1] == period2[1] else (1 if period1[1] > period2[1] else 2)
-    return hours, remain
+    p1_s, p1_e, p2_s, p2_e = period1["start"].minutes, period1["end"].minutes, period2["start"].minutes, period2["end"].minutes
+    minutes = max(min(p1_e, p2_e) - max(p1_s, p2_s), 0)
+    remain = None if p1_e == p2_e else (1 if p1_e > p2_e else 2)
+    return minutes, remain
